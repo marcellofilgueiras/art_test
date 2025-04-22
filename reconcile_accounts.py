@@ -62,6 +62,8 @@ Sua função deve funcionar do seguinte modo:
 
 
 ```
+
+Um jeito MUITO SIMPLES, que talvez não fosse o ideal em um problema mais complexo, eu faria algo desse jeito.
 """
 
 def reconcile(t1, t2):
@@ -76,6 +78,8 @@ def reconcile(t1, t2):
     )
 
 reconcile(t1,t2)
+
+"""Assim, seria a função conforme solicitado"""
 
 import pandas as pd
 from datetime import datetime

@@ -13,12 +13,6 @@ from google.colab import drive
 # arquivos do drive
 drive.mount('/content/drive')
 
-# olá valentim isso é uma nova célula
-
-import pandas as pd
-
-pd.read_csv("/content/drive/MyDrive/py/data/breast_cancer.csv")
-
 """**data_modeling**
 
 
@@ -76,6 +70,13 @@ df_long = df.melt(id_vars=['target_fact'],
 
 print(df_long)
 
+"""Nos histogramas e nos Boxplots abaixo, podemos ver uma alta sobreposição dos grupos.
+
+Sendo belignos ou malignos, têm o mesmo valor de y em diversas variáveis, mas talvez a sobreposição dos histogramas mais nítidas seja de _mean_fractal_dimension_.
+
+As que mostram alguma diferenciação são mean_concave_points e worst_perimeter. Pode ser uma informação útil para montar o modelo.
+"""
+
 plt.figure(figsize=(14, 8))
 
 # Criar o boxplot facetado por variável
@@ -99,15 +100,11 @@ g.set_axis_labels("Tipo de Tumor", "Valor")
 
 # Ajustar os rótulos do eixo X
 for ax in g.axes.flat:
-    ax.set_xticklabels(['Maligno', 'Benigno'])
+    ax.set_xticklabels(['Benigno', 'Maligno'])
     ax.grid(axis='y', linestyle='--', alpha=0.3)
 
 plt.tight_layout()
 plt.show()
-
-"""df_melt"""
-
-df_long
 
 # Histogramas
 
@@ -137,10 +134,15 @@ plt.title('Matriz de Correlação')
 plt.xticks(rotation=45)
 plt.show()
 
+#Já nos indica uma alta correlação entre variáveis, o que pode levar a problemas de mukticolinearidade
+
 # Pairplot (Gráfico de pares)
-sns.pairplot(df, vars=df.columns[:-3], hue='target_fact', diag_kind='hist', plot_kws={'alpha':0.5})
+sns.pairplot(df, vars=df.columns[:-2], hue='target_fact', diag_kind='hist', plot_kws={'alpha':0.5})
 plt.suptitle('Relações entre Variáveis', y=1.02)
 plt.show()
+
+# Um Pair Plot, bem completo, mostrando Histogramas e Scatter
+# A última linha já nos dá uma pista de como serão as relações com target, a variável resposta.
 
 """2 – Construa uma regressão linear para prever o tipo do tumor, indique as variaveis preditoras e as com significancia marginal neste modelo. Dica, utilize o modulo “OLS” do “statsmodels”. Comente os resultados obtidos.
 
@@ -166,7 +168,14 @@ X = sm.add_constant(X)
 model_ols = OLS(y, X).fit()
 print(model_ols.summary())
 
-"""fator de variância"""
+"""Podemos avaliar que o coeficiente de correlação de **mean concave points** é de -5.97, indicando uma relação forte, de _quanto maior numero de mean concave points, maior chance do tumor estudado ser maligno (= 0)_.
+
+Ainda se trata de uma métrica confiável, por ter um baixo desvio padrão, menor que o valor-t, e também com um baixo valor p.
+
+Já **worst_perimeter** não pareceu ter muito influência que eu teria visto inicialmente no gráfico, com coeficiente perto de 0..
+
+O mais contra-intuitivo é que **mean_fractal_points** tem uma relação positiva surpreendentemente grande, de +4.49, mas mostra com alto desvio padrão e alto valor-p. Se no gráfico estava sobreposta, porque agora estaria exercendo alta influência?
+"""
 
 # Fator de Inflação de Variância (VIF)
 vif_data = pd.DataFrame()
@@ -175,10 +184,12 @@ vif_data["VIF"] = [variance_inflation_factor(X.values, i) for i in range(1, len(
 print("\nFator de Inflação de Variância (VIF):")
 print(vif_data)
 
+"""Vamos investigar as duas variáveis com mais efeitos sozinhas."""
+
 ## 3.2 Modelo simples
 
 model_ols_simples = OLS(y, df[['mean_concave_points']]).fit()
-print(model_ols.summary())
+print(model_ols_simples.summary())
 
 
 
@@ -187,8 +198,28 @@ sns.regplot(x='mean_concave_points', y='target', data=df, ci=95)
 plt.ylim(-0.1, 1.1)
 plt.title('Relação Linear: Target ~ Mean Concave Points')
 plt.xlabel('Mean Concave Points')
-plt.ylabel('Target (0=Benigno, 1=Maligno)')
+plt.ylabel('Target (1=Benigno, 0=Maligno)')
 plt.show()
+
+"""O efeito se manteve, mostrando que **mean_concave_points** é uma variável fundamental para explicar a questão.
+
+
+Vamos ver agora **mean_Fractal_points**:
+"""
+
+model_fractal_simples = OLS(y, df[['mean_fractal_dimension']]).fit()
+print(model_fractal_simples.summary())
+
+
+plt.figure(figsize=(10, 6))
+sns.regplot(x='mean_fractal_dimension', y='target', data=df, ci=95)
+plt.ylim(-0.1, 1.1)
+plt.title('Relação Linear: Target ~ Mean Fractal Dimension')
+plt.xlabel('Mean Fractal Dimension')
+plt.ylabel('Target (1=Benigno, 0=Maligno)')
+plt.show()
+
+"""O gráfico nos ajuda a demonstrar o que o valor p alto no modelo completo nos indicam. Sozinha, a variável não é mais útil para responder a questão. Pode ser visto também nos efeitos de sobreposição de histogramas e boxplots da varíavel lá em cima."""
 
 ## 3.3 Modelo final simplificado
 X_final = df[['mean_concave_points', 'worst_perimeter', 'mean_fractal_dimension']]
@@ -228,7 +259,7 @@ sns.regplot(x='mean_concave_points', y='target', data=df,
 plt.ylim(-0.1, 1.1)
 plt.title('Curva de Regressão Logística: Probabilidade de Tumor Maligno')
 plt.xlabel('Mean Concave Points')
-plt.ylabel('Probabilidade de Tumor Maligno')
+plt.ylabel('Probabilidade de Tumor Benigno - (1=Benigno, 0=Maligno)')
 plt.show()
 
 # Curva ROC
@@ -244,7 +275,7 @@ plt.xlim([0.0, 1.0])
 plt.ylim([0.0, 1.05])
 plt.xlabel('Taxa de Falsos Positivos')
 plt.ylabel('Taxa de Verdadeiros Positivos')
-plt.title('Curva ROC (Característica Operacional do Receptor)')
+plt.title('Curva ROC')
 plt.legend(loc="lower right")
 plt.show()
 

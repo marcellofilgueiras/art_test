@@ -44,6 +44,8 @@ query1 = """SELECT  c.Nome, p.PedidoID, p.DataPedido, p.ValorTotal
             ON c.ClienteID = p.ClienteID;"""
 
 
+
+
 resultado1 = pd.read_sql_query(query1, con)
 
 resultado1
@@ -83,7 +85,26 @@ resultado2
 
 """de novo, some o pedidio do cliente 4, que não temos o nome, mas sabemos que ele existe e fez um pedido.
 
+não foi o pedido mas vou fazer
+"""
 
+query20 = """
+SELECT  p.ClienteID,
+  COUNT(p.PedidoID) AS QuantidadePedidos,
+  SUM(p.ValorTotal) AS ValorTotalPedidos
+FROM
+  Pedidos p
+LEFT_JOIN
+  Clientes c ON c.ClienteID = p.ClienteID
+GROUP BY
+  p.ClienteID;
+"""
+
+resultado20 = pd.read_sql_query(query20, con)
+
+resultado20
+
+"""
 3 – Escreva uma consulta SQL que exiba os pedidos que não possuem pagamentos registrados. A tabela resultante deve conter as colunas: PedidoID, DataPedido e ValorTotal."""
 
 #  Consulta 3 – Pedidos sem pagamento registrado
